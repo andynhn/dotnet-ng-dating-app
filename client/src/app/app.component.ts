@@ -15,14 +15,16 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.getUsers();
   }
-  
+
   getUsers() {
     this.http.get('https://localhost:5001/api/users').subscribe(response => {
-      this.users = response;  //assign this components users variable the response body from the observable (which should be the list of users)
+      this.users = response;
+      // assign this components users variable the response body from the observable (which should be the list of users)
     }, error => {
       console.log(error);
-    })  //http.get returns an observable. subscribe to it to get the response body from the API url
+    });
+    // http.get returns an observable.
+    // subscribe to it to get the response body from the API url
   }
 
-  
 }
