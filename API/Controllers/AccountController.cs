@@ -40,6 +40,7 @@ namespace API.Controllers
 
             await _context.SaveChangesAsync();  // now we call the db and save the user into the table.
 
+            // now return the username with the JSON Web Token (JWT)
             return new UserDto
             {
                 Username = user.UserName,
