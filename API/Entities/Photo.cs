@@ -8,6 +8,8 @@ namespace API.Entities
         public int Id { get; set; }
         public string Url { get; set; }
         public bool IsMain { get; set; }
+        
+        // public id needed for cloudinary integration
         public string PublicId { get; set; }
         
         // fully define the relationship with AppUser. EF will make AppUserId nullable. 

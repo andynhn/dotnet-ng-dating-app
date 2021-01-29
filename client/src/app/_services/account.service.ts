@@ -25,8 +25,7 @@ export class AccountService {
           // map applies a function to each value emitted by the source observable.
           // map emits the values as an observable
           // populate the user inside local storage in the browser
-          localStorage.setItem('user', JSON.stringify(user));
-          this.currentUserSource.next(user);
+          this.setCurrentUser(user);
         }
       })
     );
@@ -37,13 +36,18 @@ export class AccountService {
     return this.http.post(this.baseUrl + 'account/register', model).pipe(
       map((user: User) => {
         if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          this.currentUserSource.next(user);
+          this.setCurrentUser(user);
         }
       })
     )
   }
+
+
   setCurrentUser(user: User) {
+    // NOTE (1/28/2021): Saving the 'user' object in localStorage should be done here (not in the above login/register method's pipe/map).
+    // Otherwise, may cause issue with updating localStorage with the correct item.
+    // Some app functionality depends on accessing that localStorage item (e.g. PhotoUrl)
+    localStorage.setItem('user', JSON.stringify(user));
     this.currentUserSource.next(user);
   }
 
