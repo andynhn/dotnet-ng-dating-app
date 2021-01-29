@@ -21,7 +21,7 @@
     </ul>
 
     <div class="dropdown" *ngIf="(accountService.currentUser$ | async) as user" dropdown>
-        <img src="{{user.photoUrl}}" alt="{{user.username}}">
+        <img src="{{user.photoUrl || './assets/user.png'}}" alt="{{user.username}}">
         <!-- async pipe auto-unsubscribes if our component is no longer visible or in use. -->
         <!-- With the pipe, we can avoid subscribing to a currentUser$ observable in the nav.component.ts file where we'd have to manually unsubscribe. -->
         <a class="dropdown-toggle text-light ml-2" dropdownToggle>Welcome {{user.username | titlecase}}</a>
