@@ -13,8 +13,10 @@ export class DateInputComponent implements ControlValueAccessor {
   @Input() maxDate: Date;
   bsConfig: Partial<BsDatepickerConfig>;  // Partial: every property in this type will be optional
 
-  // self so that dependencies are injected locally and so that it douesn't try to
-  // get it somewhere else in the dependency tree
+  /**
+   * We need to pass in self so that the dependencies are injected locally and so that it doesn't
+   * try to get it somewhere else in the dependency tree.
+   */
   constructor(@Self() public ngControl: NgControl) {
     this.ngControl.valueAccessor = this;
     this.bsConfig = {

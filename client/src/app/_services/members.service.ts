@@ -1,9 +1,13 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, take } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { Member } from '../_models/member';
+import { PaginatedResult } from '../_models/pagination';
+import { User } from '../_models/user';
+import { UserParams } from '../_models/userParams';
+import { AccountService } from './account.service';
 
 
 @Injectable({
@@ -12,32 +16,85 @@ import { Member } from '../_models/member';
 export class MembersService {
   baseUrl = environment.apiUrl;
   members: Member[] = [];
+  memberCache = new Map();  // implement a cache for pagination, etc.
+  user: User;
+  userParams: UserParams;
 
-  constructor(private http: HttpClient) { }
+  /**
+   * inject account service here instead of in member-list component
+   * (can inject services in services, but be careful of circular references)
+   * We want some data to persist between components that come from the userParams
+   * so we can take advantage of the singleton nature of services.
+   * e.g. Maintaining filters in memory when navigating to a user page and back to the user list.
+   */
+  constructor(private http: HttpClient, private accountService: AccountService) {
+    this.accountService.currentUser$.pipe(take(1)).subscribe(user => {
+      this.user = user;
+      this.userParams = new UserParams(user);
+    });
+  }
 
-  getMembers() {
-    // if it's the first time we visit the app (no members have been loaded)
-    // then we make the api call and display the loading spinner via our loading interceptor
-    // But if we've already loaded that page of members, then navigate to a different tab and then come back,
-    // we don't want to make the api call again just to show the same data (this would also activate the loading spinner again).
-    // So we can use the Singleton nature of services and send back the user list as an observable (return "of" sends it as an observable).
-    if (this.members.length > 0) {
-      return of(this.members);
+  getUserParams() {
+    return this.userParams;
+  }
+
+  setUserParams(params: UserParams) {
+    this.userParams = params;
+  }
+
+  resetUserParams() {
+    this.userParams = new UserParams(this.user);
+    return this.userParams;
+  }
+
+  getMembers(userParams: UserParams) {
+    console.log(Object.values(userParams).join('-'));
+    /**
+     * we've created a "key" that stores the userParams so that we can keep track of user activity for caching
+     * the key is just the params separated by a hyphen the idea is to prevent the "loading spinner"
+     * from activating on routes that we've already loaded. This response tries to get a value from the memberCache 
+     * based on the most recent userParams.
+     */
+    var response = this.memberCache.get(Object.values(userParams).join('-'));
+
+    /**
+     * if that key exists (meaning the user visited this before, we should bypass our loadingSpinner)
+     * We can use the Singleton nature of services and send back the user list as an observable (return "of" sends it as an observable).
+     */
+    if (response) {
+      return of(response);
     }
+    let params = this.getPaginationHeaders(userParams.pageNumber, userParams.pageSize);
 
-    return this.http.get<Member[]>(this.baseUrl + 'users').pipe(
-      map(members => {
-        this.members = members;
-        return members;
+    params = params.append('minAge', userParams.minAge.toString());
+    params = params.append('maxAge', userParams.maxAge.toString());
+    params = params.append('gender', userParams.gender);
+    params = params.append('orderBy', userParams.orderBy);
+
+    // If it passes the above caching functionality, then go to the api, which hits our loading interceptor.
+    // Then upon return, add that key params route to the memberCache map.
+    // onto the memberCache map so that we avoid the loading Spinner next time.
+    return this.getPaginatedResult<Member[]>(this.baseUrl + 'users', params).pipe(
+      map(response => {
+        this.memberCache.set(Object.values(userParams).join('-'), response);
+        return response;
       })
     );
   }
 
   getMember(username: string) {
-    const member = this.members.find(x => x.username === username);
+    // combine the paginated results from the memberCache values as an array
+    // then we reduce our array into something else. We want the results of each array in a single array that we can search
+    // REDUCE: As we call the reduce function on each element in our member array, we get the result (which contains
+    // the members in our cache) then we concatenate that into an array that we have, which starts with nothing.
+    // then the FIND method finds the first instance of the user we want, based on the username passed in.
+    const member = [...this.memberCache.values()]
+      .reduce((arr, elem) => arr.concat(elem.result), [])
+      .find((member: Member) => member.username === username);
+    console.log(member);
 
-    // we want to look for undefined, because that's what the find method returns. Avoid the api call if member is undefined.
-    if (member !== undefined) {
+    // if we find the member in our cache, bypass the loading spinner in the loading interceptor.
+    if (member) {
       return of(member);
     }
     return this.http.get<Member>(this.baseUrl + 'users/' + username);
@@ -61,5 +118,28 @@ export class MembersService {
 
   deletePhoto(photoId: number) {
     return this.http.delete(this.baseUrl + 'users/delete-photo/' + photoId);
+  }
+
+  private getPaginatedResult<T>(url, params: HttpParams) {
+    const paginatedResult: PaginatedResult<T> = new PaginatedResult<T>();
+    return this.http.get<T>(url, { observe: 'response', params }).pipe(
+      map(response => {
+        paginatedResult.result = response.body;
+        if (response.headers.get('Pagination') !== null) {
+          paginatedResult.pagination = JSON.parse(response.headers.get('Pagination'));
+        }
+        return paginatedResult;
+      })
+    );
+  }
+
+  private getPaginationHeaders(pageNumber: number, pageSize: number) {
+    // this helps serialize our parameters
+    let params = new HttpParams();
+
+    params = params.append('pageNumber', pageNumber.toString());
+    params = params.append('pageSize', pageSize.toString());
+
+    return params;
   }
 }

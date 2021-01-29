@@ -27,13 +27,21 @@ export class ErrorInterceptor implements HttpInterceptor {
                   const modelStateErrors = [];
                   for (const key in error.error.errors) {
                     if (error.error.errors[key]) {
-                      modelStateErrors.push(error.error.errors[key])
+                      modelStateErrors.push(error.error.errors[key]);
                     }
                   }
-                  // We will get an array of arrays, so we want to flatten it. Need to go into tsconfig.json and add es2019 to lib in order to use flat() for now.
+                  /*
+                    We will get an array of arrays, so we want to flatten it.
+                    Need to go into tsconfig.json and add es2019 to lib in order to use flat() for now
+                  */
                   throw modelStateErrors.flat();
                 } else {
-                  // Potential bug in Angular may be causing statusText to be "OK" for all http responses. Postman validates that these HTTP responses are accurately "400 Bad Reequest, etc.". Instead of displaying error.statusText here (which would be misleading), display the actual hard-coded string in the toastr notifcation for now...
+                  /*
+                    Potential bug in Angular may be causing statusText to be "OK" for all http responses.
+                    Postman validates that these HTTP responses are accurately "400 Bad Reequest, etc."
+                    Instead of displaying error.statusText here (which would be misleading),
+                    display the actual hard-coded string in the toastr notifcation for now...
+                  */
                   this.toastr.error("Bad Request", error.status);
                 }
               break;
@@ -44,7 +52,10 @@ export class ErrorInterceptor implements HttpInterceptor {
               this.router.navigateByUrl('/not-found');
               break;
             case 500:
-              // use NavigationExtras to get a hold of that error so that we can do sth on the page after we've proceeded to the /server-error route
+              /*
+                use NavigationExtras to get a hold of that error so that we can do sth
+                on the page after we've proceeded to the /server-error route
+              */
               const navigationExtras: NavigationExtras = {state: {error: error.error}};
               this.router.navigateByUrl('/server-error', navigationExtras);
               break;

@@ -6,6 +6,7 @@ using API.Data;
 using API.DTOs;
 using API.Entities;
 using API.Extensions;
+using API.Helpers;
 using API.Interfaces;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -30,14 +31,35 @@ namespace API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<MemberDto>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<MemberDto>>> GetUsers([FromQuery]UserParams userParams)
         {
-            var users = await _userRepository.GetMembersAsync();
-            // we want to use AutoMapper here because it helps us be more specific with the data that we send back to the client.
-            // automapper maps user data that we specify in MemberDto.cs (e.g. we exclude the Password, etc.).
-            // AutoMapper does this partly by comparing the property names between the objects.
-            //var usersToReturn = _mapper.Map<IEnumerable<MemberDto>>(users);  // the source object goes in ().
-            // need the Ok() result here because of IEnumerable
+            /*
+                User.GetUsername() gets the username from a User claims principle
+                We don't want the user to provide this. We want to get it from what we're authenticating against which is the token.
+                Inside a Controller we have access to a claims principle of the User. This contains info about their identity.
+                We want to find the claim that matches the name identifier, which is the claim that we give the user in their token.
+            */
+            var user = await _userRepository.GetUserByUsernameAsync(User.GetUsername());
+            userParams.CurrentUsername = user.UserName;
+
+            // if gender is empty in the userParams, auto set it. So if the user is male, default the params gender to female. 
+            // if the user is female, default the params gender to male (so that the query returns that gender)
+            if (string.IsNullOrEmpty(userParams.Gender))
+                userParams.Gender = user.Gender == "male" ? "female" : "male";
+            
+            // filters the returned users based on our userParams from the query
+            var users = await _userRepository.GetMembersAsync(userParams);
+
+            // we always have access to the Response in here.
+            Response.AddPaginationHeader(users.CurrentPage, users.PageSize, users.TotalCount, users.TotalPages);
+
+            /*
+                we want to use AutoMapper here because it helps us be more specific with the data that we send back to the client.
+                automapper maps user data that we specify in MemberDto.cs (e.g. we exclude the Password, etc.).
+                AutoMapper does this partly by comparing the property names between the objects.
+                var usersToReturn = _mapper.Map<IEnumerable<MemberDto>>(users);  // the source object goes in ().
+                need the Ok() result here because of IEnumerable
+            */
             return Ok(users);
         }
 
@@ -50,8 +72,11 @@ namespace API.Controllers
         [HttpPut]
         public async Task<ActionResult> UpdateUser(MemberUpdateDto memberUpdateDto)
         {
-            // gives us the user's username from the token that the api uses to authenticate this user.
-            // this is who we are updating in this case.
+            /*
+                This gives us the user's username from the token that the api uses to authenticate this user.
+                we made a ClaimsPrincipalExtension helper method for that.
+                this is who we are updating in this case. 
+            */
             var user = await _userRepository.GetUserByUsernameAsync(User.GetUsername());
 
             _mapper.Map(memberUpdateDto, user);

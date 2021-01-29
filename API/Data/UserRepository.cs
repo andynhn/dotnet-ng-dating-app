@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using AutoMapper.QueryableExtensions;
 using AutoMapper;
 using System.Linq;
+using API.Helpers;
+using System;
 
 namespace API.Data
 {
@@ -29,11 +31,35 @@ namespace API.Data
                 .SingleOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<MemberDto>> GetMembersAsync()
+        /*
+            Main method to get a list of members to dispay on the page
+            Return it as a PagedList so that we can enable pagination.
+            AsNoTracking turns off tracking in Entity Framework because we just want to read from it.
+            Pass in userParams (in the query string) for queryable filtered results
+        */
+        public async Task<PagedList<MemberDto>> GetMembersAsync(UserParams userParams)
         {
-            return await _context.Users
-                .ProjectTo<MemberDto>(_mapper.ConfigurationProvider)
-                .ToListAsync();
+            // queryable so that we can decide what we want to filter by with a query.
+            var query = _context.Users.AsQueryable();
+            // filter out the logged in user from the member list
+            query = query.Where(u => u.UserName != userParams.CurrentUsername);
+            query = query.Where(u => u.Gender == userParams.Gender);
+            
+            // calculate minimum age and maximum age filtering
+            var minDob = DateTime.Today.AddYears(-userParams.MaxAge - 1);
+            var maxDob = DateTime.Today.AddYears(-userParams.MinAge);
+            query = query.Where(u => u.DateOfBirth >= minDob && u.DateOfBirth <= maxDob);
+
+            // these are the new C# switch expressions. instead of creating switch and cases, we can do this.
+            // the _ is the default case.
+            query = userParams.OrderBy switch
+            {
+                "created" => query.OrderByDescending(u => u.Created),
+                _ => query.OrderByDescending(u => u.LastActive)
+            };
+
+            return await PagedList<MemberDto>.CreateAsync(query.ProjectTo<MemberDto>(_mapper.ConfigurationProvider).AsNoTracking(), 
+                userParams.PageNumber, userParams.PageSize);
         }
 
         public async Task<AppUser> GetUserByIdAsync(int id)

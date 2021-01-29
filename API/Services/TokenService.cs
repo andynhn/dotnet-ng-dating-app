@@ -25,7 +25,9 @@ namespace API.Services
             // nameId will store the user.UserName
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.NameId, user.UserName)
+                // use UniqueName for username and NameId for the user's Id (the int)
+                new Claim(JwtRegisteredClaimNames.NameId, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
             };
 
             // create credentials that takes in the key and a security algorithm to sign the token
