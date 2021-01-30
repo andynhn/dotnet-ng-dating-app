@@ -13,7 +13,7 @@ import { LoadingService } from './_services/loading.service';
 export class AppComponent implements OnInit {
   title = 'The Dating App';
   users: any;
-  isLoading: boolean = false;
+  isLoading: boolean;
 
   constructor(private accountService: AccountService, private loadingService: LoadingService) {}
 

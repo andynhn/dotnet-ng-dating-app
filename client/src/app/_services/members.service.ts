@@ -83,11 +83,13 @@ export class MembersService {
   }
 
   getMember(username: string) {
-    // combine the paginated results from the memberCache values as an array
-    // then we reduce our array into something else. We want the results of each array in a single array that we can search
-    // REDUCE: As we call the reduce function on each element in our member array, we get the result (which contains
-    // the members in our cache) then we concatenate that into an array that we have, which starts with nothing.
-    // then the FIND method finds the first instance of the user we want, based on the username passed in.
+    /**
+     * combine the paginated results from the memberCache values as an array
+     * then we reduce our array into something else. We want the results of each array in a single array that we can search
+     * REDUCE: As we call the reduce function on each element in our member array, we get the result (which contains
+     * the members in our cache) then we concatenate that into an array that we have, which starts with nothing.
+     * then the FIND method finds the first instance of the user we want, based on the username passed in.
+     */
     const member = [...this.memberCache.values()]
       .reduce((arr, elem) => arr.concat(elem.result), [])
       .find((member: Member) => member.username === username);
@@ -120,6 +122,52 @@ export class MembersService {
     return this.http.delete(this.baseUrl + 'users/delete-photo/' + photoId);
   }
 
+
+  addLike(username: string) {
+    // this is a post, so we need to add a body here. an empty object here.
+    return this.http.post(this.baseUrl + 'likes/' + username, {});
+  }
+
+  getLikes(predicate: string, pageNumber, pageSize) {
+    /**
+     * we've created a "key" that stores the pageNumber, pageSize, and predicate (liked or likedBy) so that we can
+     * keep track of user activity for caching. The key is just the params separated by a hyphen. The idea is to prevent the
+     * "loading spinner" from activating on routes that we've already loaded. This response tries to get a value from the memberCache
+     * based on the most recent params passed in (see getMembers for similar implementation).
+     */
+    let params = this.getPaginationHeaders(pageNumber, pageSize);
+    params = params.append('predicate', predicate);
+
+    console.log(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
+
+    var response = this.memberCache.get(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
+
+    /**
+     * if that key exists (meaning the user visited this before, we should bypass our loadingSpinner)
+     * We can use the Singleton nature of services and send back the list as an observable (return "of" sends it as an observable).
+     */
+    if (response) {
+      return of(response);
+    }
+    /**
+     * If it passes the above caching functionality, then go to the api, which hits our loading interceptor.
+     * Then upon return, add that key params route to the memberCache map.
+     * onto the memberCache map so that we avoid the loading Spinner next time.
+     */
+    return this.getPaginatedResult<Partial<Member[]>>(this.baseUrl + 'likes', params).pipe(
+      map(response => {
+        this.memberCache.set(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'), response);
+        return response;
+      })
+    );
+  }
+
+
+  /**
+   * Private method to get results for pagination
+   * @param url the api url
+   * @param params include the pagination headers that help determine what to display on the page
+   */
   private getPaginatedResult<T>(url, params: HttpParams) {
     const paginatedResult: PaginatedResult<T> = new PaginatedResult<T>();
     return this.http.get<T>(url, { observe: 'response', params }).pipe(
@@ -133,6 +181,11 @@ export class MembersService {
     );
   }
 
+  /**
+   * Private method that appends pagenumber and pageSize to the Http Params
+   * @param pageNumber Current page number the user is on for pagination
+   * @param pageSize total number of pages
+   */
   private getPaginationHeaders(pageNumber: number, pageSize: number) {
     // this helps serialize our parameters
     let params = new HttpParams();

@@ -24,12 +24,9 @@ namespace API.Entities
 
         // one to many - 1 user can have many photos
         public ICollection<Photo> Photos { get; set; }
-
-        // need "Get" specifically because we will be using AutoMapper. 
-        // we set a property in the MemberDto called Age. AutoMapper will know to populate it with the value returned from this GetAge method.
-        // public int GetAge()
-        // {
-        //     return DateOfBirth.CalculateAge();
-        // }
+        // implement like feature. LikedByUsers = list of users that like the currently logged in user
+        public ICollection<UserLike> LikedByUsers { get; set; }
+        // LikedUsers = list of users that the currently logged in user has liked
+        public ICollection<UserLike> LikedUsers { get; set; }
     }
 }
