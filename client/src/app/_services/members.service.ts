@@ -8,6 +8,7 @@ import { PaginatedResult } from '../_models/pagination';
 import { User } from '../_models/user';
 import { UserParams } from '../_models/userParams';
 import { AccountService } from './account.service';
+import { getPaginatedResult, getPaginationHeaders } from './paginationHelper';
 
 
 @Injectable({
@@ -64,7 +65,7 @@ export class MembersService {
     if (response) {
       return of(response);
     }
-    let params = this.getPaginationHeaders(userParams.pageNumber, userParams.pageSize);
+    let params = getPaginationHeaders(userParams.pageNumber, userParams.pageSize);
 
     params = params.append('minAge', userParams.minAge.toString());
     params = params.append('maxAge', userParams.maxAge.toString());
@@ -74,7 +75,7 @@ export class MembersService {
     // If it passes the above caching functionality, then go to the api, which hits our loading interceptor.
     // Then upon return, add that key params route to the memberCache map.
     // onto the memberCache map so that we avoid the loading Spinner next time.
-    return this.getPaginatedResult<Member[]>(this.baseUrl + 'users', params).pipe(
+    return getPaginatedResult<Member[]>(this.baseUrl + 'users', params, this.http).pipe(
       map(response => {
         this.memberCache.set(Object.values(userParams).join('-'), response);
         return response;
@@ -135,7 +136,7 @@ export class MembersService {
      * "loading spinner" from activating on routes that we've already loaded. This response tries to get a value from the memberCache
      * based on the most recent params passed in (see getMembers for similar implementation).
      */
-    let params = this.getPaginationHeaders(pageNumber, pageSize);
+    let params = getPaginationHeaders(pageNumber, pageSize);
     params = params.append('predicate', predicate);
 
     console.log(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
@@ -154,7 +155,7 @@ export class MembersService {
      * Then upon return, add that key params route to the memberCache map.
      * onto the memberCache map so that we avoid the loading Spinner next time.
      */
-    return this.getPaginatedResult<Partial<Member[]>>(this.baseUrl + 'likes', params).pipe(
+    return getPaginatedResult<Partial<Member[]>>(this.baseUrl + 'likes', params, this.http).pipe(
       map(response => {
         this.memberCache.set(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'), response);
         return response;
@@ -163,36 +164,37 @@ export class MembersService {
   }
 
 
-  /**
-   * Private method to get results for pagination
-   * @param url the api url
-   * @param params include the pagination headers that help determine what to display on the page
-   */
-  private getPaginatedResult<T>(url, params: HttpParams) {
-    const paginatedResult: PaginatedResult<T> = new PaginatedResult<T>();
-    return this.http.get<T>(url, { observe: 'response', params }).pipe(
-      map(response => {
-        paginatedResult.result = response.body;
-        if (response.headers.get('Pagination') !== null) {
-          paginatedResult.pagination = JSON.parse(response.headers.get('Pagination'));
-        }
-        return paginatedResult;
-      })
-    );
-  }
+  // moved to paginationHelper class
+  // /**
+  //  * Private method to get results for pagination
+  //  * @param url the api url
+  //  * @param params include the pagination headers that help determine what to display on the page
+  //  */
+  // private getPaginatedResult<T>(url, params: HttpParams) {
+  //   const paginatedResult: PaginatedResult<T> = new PaginatedResult<T>();
+  //   return this.http.get<T>(url, { observe: 'response', params }).pipe(
+  //     map(response => {
+  //       paginatedResult.result = response.body;
+  //       if (response.headers.get('Pagination') !== null) {
+  //         paginatedResult.pagination = JSON.parse(response.headers.get('Pagination'));
+  //       }
+  //       return paginatedResult;
+  //     })
+  //   );
+  // }
 
-  /**
-   * Private method that appends pagenumber and pageSize to the Http Params
-   * @param pageNumber Current page number the user is on for pagination
-   * @param pageSize total number of pages
-   */
-  private getPaginationHeaders(pageNumber: number, pageSize: number) {
-    // this helps serialize our parameters
-    let params = new HttpParams();
+  // /**
+  //  * Private method that appends pagenumber and pageSize to the Http Params
+  //  * @param pageNumber Current page number the user is on for pagination
+  //  * @param pageSize total number of pages
+  //  */
+  // private getPaginationHeaders(pageNumber: number, pageSize: number) {
+  //   // this helps serialize our parameters
+  //   let params = new HttpParams();
 
-    params = params.append('pageNumber', pageNumber.toString());
-    params = params.append('pageSize', pageSize.toString());
+  //   params = params.append('pageNumber', pageNumber.toString());
+  //   params = params.append('pageSize', pageSize.toString());
 
-    return params;
-  }
+  //   return params;
+  // }
 }

@@ -11,6 +11,7 @@ namespace API.Data
 
         public DbSet<AppUser> Users { get; set; }
         public DbSet<UserLike> Likes { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         // configure Entities for the UserLike feature. Need this or we may get errors when we add a migration.
         protected override void OnModelCreating(ModelBuilder builder)
@@ -34,6 +35,20 @@ namespace API.Data
                 .WithMany(l => l.LikedByUsers)
                 .HasForeignKey(s => s.LikedUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            // configure for the Message feature
+            builder.Entity<Message>()
+                .HasOne(u => u.Recipient)
+                .WithMany(m => m.MessagesReceived)
+                .OnDelete(DeleteBehavior.Restrict); // only remove if other party deleted it themselves
+            
+            builder.Entity<Message>()
+                .HasOne(u => u.Sender)
+                .WithMany(m => m.MessagesSent)
+                .OnDelete(DeleteBehavior.Restrict); // only remove if other party deleted it themselves
+            
+            
         }
+
     }
 }
