@@ -443,3 +443,5 @@ $RECYCLE.BIN/
 
 appsettings.json
 *.db
+*.db-shm
+*.db-wal

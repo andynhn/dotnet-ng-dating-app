@@ -60,6 +60,10 @@ export class AccountService {
    * @param user the authenticated user.
    */
   setCurrentUser(user: User) {
+    user.roles = [];
+    const roles = this.getDecodedToken(user.token).role;
+    // our JWT holds multiple roles in an array and single roles as a string. This logic checks for that.
+    Array.isArray(roles) ? user.roles = roles : user.roles.push(roles);
     /*
       NOTE (1/28/2021): Saving the 'user' object in localStorage should be done here (not in the above login/register method's pipe/map).
       Otherwise, may cause issue with updating localStorage with the correct item.
@@ -76,5 +80,10 @@ export class AccountService {
   logout() {
     localStorage.removeItem('user');
     this.currentUserSource.next(null);
+  }
+
+  getDecodedToken(token) {
+    // split the JWT (a string, separated by "."), then get the paylaod which is at index 1
+    return JSON.parse(atob(token.split('.')[1]));
   }
 }
