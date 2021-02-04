@@ -23,6 +23,10 @@ namespace API.Data
         // note that we do not have a DbSet for User anymore. That's provided by IdentityDbContext
         public DbSet<UserLike> Likes { get; set; }
         public DbSet<Message> Messages { get; set; }
+        
+        // properties for Signal R group hub message implementation
+        public DbSet<Group> Groups { get; set; }
+        public DbSet<Connection> Connections { get; set; }
 
         // configure Entities for the UserLike feature. Need this or we may get errors when we add a migration.
         protected override void OnModelCreating(ModelBuilder builder)

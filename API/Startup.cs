@@ -8,6 +8,7 @@ using API.Extensions;
 using API.Interfaces;
 using API.Middleware;
 using API.Services;
+using API.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -40,6 +41,8 @@ namespace API
             services.AddControllers();
             services.AddCors();     //implement cors
             services.AddIdentityServices(_config);
+            // need to add signal R to services here
+            services.AddSignalR();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "API", Version = "v1" });
@@ -65,7 +68,10 @@ namespace API
             app.UseRouting();
 
             // order matters. UseCors, then UseAuthentication, then UseAuthorization
-            app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("https://localhost:4200"));     //implement cors
+            app.UseCors(x => x.AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials()
+                .WithOrigins("https://localhost:4200"));     //implement cors
 
             app.UseAuthentication();
 
@@ -74,6 +80,10 @@ namespace API
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                // need to add Signal R hub here. Specify the hubs that you use.
+                endpoints.MapHub<PresenceHub>("hubs/presence");
+                // for our message hub
+                endpoints.MapHub<MessageHub>("hubs/message");
             });
         }
     }

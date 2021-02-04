@@ -4,6 +4,7 @@ import { delay } from 'rxjs/operators';
 import { User } from './_models/user';
 import { AccountService } from './_services/account.service';
 import { LoadingService } from './_services/loading.service';
+import { PresenceService } from './_services/presence.service';
 
 @Component({
   selector: 'app-root',
@@ -15,7 +16,7 @@ export class AppComponent implements OnInit {
   users: any;
   isLoading: boolean;
 
-  constructor(private accountService: AccountService, private loadingService: LoadingService) {}
+  constructor(private accountService: AccountService, private loadingService: LoadingService, private presence: PresenceService) {}
 
   ngOnInit() {
     this.setCurrentUser();
@@ -24,6 +25,10 @@ export class AppComponent implements OnInit {
 
   setCurrentUser() {
     const user: User = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+      this.accountService.setCurrentUser(user);
+      this.presence.createHubConnection(user);
+    }
     this.accountService.setCurrentUser(user);
   }
 

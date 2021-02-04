@@ -15,15 +15,16 @@ export class MemberMessagesComponent implements OnInit {
   @Input() username: string;
   messageContent: string; // make sure the name of the input in the form is the same
 
-  constructor(private messageService: MessageService) { }
+  constructor(public messageService: MessageService) { }
 
   ngOnInit(): void {}
 
   sendMessage() {
     // here, this.username is the username of the profile the logged in user is on.
     // sendMessage takes the recipient, then the messageContent.
-    this.messageService.sendMessage(this.username, this.messageContent).subscribe(message => {
-      this.messages.push(message);
+    this.messageService.sendMessage(this.username, this.messageContent).then(() => {
+      // don't push the message anymore because we are receiving it from our Signal R hub
+      // this.messages.push(message);
       this.messageForm.reset();
     });
   }
