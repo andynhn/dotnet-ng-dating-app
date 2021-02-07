@@ -97,10 +97,11 @@ export class MemberDetailComponent implements OnInit, OnDestroy {
 
   // method that helps get messages only when that tab is activated
   onTabActivated(data: TabDirective) {
-    console.log(data);
     this.activeTab = data;
     if (this.activeTab.heading === 'Messages' && this.messages.length === 0) {
       this.messageService.createHubConnection(this.user, this.member.username);
+      // createHubConnection will update any null dateReads for messages.
+      // the messageThread$ observable should have the updated list with the updated messages
     } else {
       // stop the hub connection if they are not on that tab
       this.messageService.stopHubConnection();

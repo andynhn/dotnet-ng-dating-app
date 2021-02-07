@@ -74,18 +74,19 @@ namespace API.Data
                 .SingleOrDefaultAsync(x => x.UserName == username);
         }
 
+        public async Task<string> GetUserGender(string username)
+        {
+            return await _context.Users
+                .Where(x => x.UserName == username)
+                .Select(x => x.Gender).FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<AppUser>> GetUsersAsync()
         {
             // must .Include to have photos returned as well.
             return await _context.Users
                 .Include(p => p.Photos)
                 .ToListAsync();
-        }
-
-        public async Task<bool> SaveAllAsync()
-        {
-            // SaveChangesAsync returns an int for the number of changes made to the db. So need > 0 check.
-            return await _context.SaveChangesAsync() > 0;
         }
 
         public async void Update(AppUser user)

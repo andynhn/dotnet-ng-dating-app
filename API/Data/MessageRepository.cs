@@ -72,6 +72,7 @@ namespace API.Data
         {
             var query = _context.Messages
                 .OrderByDescending(m => m.MessageSent)
+                .ProjectTo<MessageDto>(_mapper.ConfigurationProvider)
                 .AsQueryable();
 
             // only return messages that have not been deleted by that user.
@@ -79,14 +80,12 @@ namespace API.Data
             // Messages are only deleted permanently when both sender and recipient flagged it for deletion.
             query = messageParams.Container switch
             {
-                "Inbox" => query.Where(u => u.Recipient.UserName == messageParams.Username && u.RecipientDeleted == false),
-                "Outbox" => query.Where(u => u.Sender.UserName == messageParams.Username && u.SenderDeleted == false),
-                _ => query.Where(u => u.Recipient.UserName == messageParams.Username && u.RecipientDeleted == false && u.DateRead == null)
+                "Inbox" => query.Where(u => u.RecipientUsername == messageParams.Username && u.RecipientDeleted == false),
+                "Outbox" => query.Where(u => u.SenderUsername == messageParams.Username && u.SenderDeleted == false),
+                _ => query.Where(u => u.RecipientUsername == messageParams.Username && u.RecipientDeleted == false && u.DateRead == null)
             };
 
-            var messages = query.ProjectTo<MessageDto>(_mapper.ConfigurationProvider);
-
-            return await PagedList<MessageDto>.CreateAsync(messages,messageParams.PageNumber, messageParams.PageSize);
+            return await PagedList<MessageDto>.CreateAsync(query,messageParams.PageNumber, messageParams.PageSize);
         }
 
         /*
@@ -120,8 +119,9 @@ namespace API.Data
                 {
                     message.DateRead = DateTime.UtcNow;
                 }
-                // save to DB
-                await _context.SaveChangesAsync();
+                // save to DB (slight deviation from Unit of Work framework. But need for now if we still want to return a list of MessageDtos)
+                // alternative is to have this method return a list of type Message, instead of the  MessageDto.
+                await _context.SaveChangesAsync();                
             }
 
             // return the messageDto
@@ -131,11 +131,6 @@ namespace API.Data
         public void RemoveConnection(Connection connection)
         {
             _context.Connections.Remove(connection);
-        }
-
-        public async Task<bool> SaveAllAsync()
-        {
-            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

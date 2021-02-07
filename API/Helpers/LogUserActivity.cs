@@ -26,13 +26,13 @@ namespace API.Helpers
             // get userId from User claims principle and extension method.
             var userId = resultContext.HttpContext.User.GetUserId();
             // get repository
-            var repo = resultContext.HttpContext.RequestServices.GetService<IUserRepository>();
+            var uow = resultContext.HttpContext.RequestServices.GetService<IUnitOfWork>();
             // get user from repository using username
-            var user = await repo.GetUserByIdAsync(userId);
+            var user = await uow.UserRepository.GetUserByIdAsync(userId);
             // set LastActive to Now.
-            user.LastActive = DateTime.Now;
+            user.LastActive = DateTime.UtcNow;
             // async save to repository.
-            await repo.SaveAllAsync();
+            await uow.Complete();
             // NOTE: and make sure to add this to AddApplicationServices
             // AND: then add this to our BaseApiController so that all of our controllers have access to this.
         }
