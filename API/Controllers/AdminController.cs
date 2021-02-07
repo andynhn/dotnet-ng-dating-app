@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using API.Entities;
+using API.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,8 +12,12 @@ namespace API.Controllers
     public class AdminController : BaseApiController
     {
         private readonly UserManager<AppUser> _userManager;
-        public AdminController(UserManager<AppUser> userManager)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IPhotoService _photoService;
+        public AdminController(UserManager<AppUser> userManager, IUnitOfWork unitOfWork, IPhotoService photoService)
         {
+            _photoService = photoService;
+            _unitOfWork = unitOfWork;
             _userManager = userManager;
         }
 
@@ -66,9 +71,66 @@ namespace API.Controllers
 
         [Authorize(Policy = "ModeratePhotoRole")]
         [HttpGet("photos-to-moderate")]
-        public ActionResult GetPhotosForModeration()
+        public async Task<ActionResult> GetPhotosForModeration()
         {
-            return Ok("Admins or moderators can see this");
+            var photos = await _unitOfWork.PhotoRepository.GetUnapprovedPhotos();
+
+            return Ok(photos);
+        }
+
+        [Authorize(Policy = "ModeratePhotoRole")]
+        [HttpPost("approve-photo/{photoId}")]
+        public async Task<ActionResult> ApprovePhoto(int photoId)
+        {
+            var photo = await _unitOfWork.PhotoRepository.GetPhotoById(photoId);
+
+            if (photo == null) return NotFound("Could not find photo");
+
+            // note: always make sure that you are updating the Photo object and not the DTO.
+            // set isApproved to true.
+            photo.IsApproved = true;
+
+            // now, after approval, check to see if the user has a IsMain photo. Get the user from the photo id.
+            var user = await _unitOfWork.UserRepository.GetUserByPhotoId(photoId);
+
+            // after a moderator approves the photo, check if the user has any photos set to IsMain. If not, set the new photo to the main photo.
+            if (!user.Photos.Any(x => x.IsMain)) photo.IsMain = true;
+
+            // save changes to the db after updating the photo.
+            await _unitOfWork.Complete();
+
+            return Ok();
+        }
+
+        [Authorize(Policy = "ModeratePhotoRole")]
+        [HttpPost("reject-photo/{photoId}")]
+        public async Task<ActionResult> RejectPhoto(int photoId)
+        {
+            // get the photo
+            var photo = await _unitOfWork.PhotoRepository.GetPhotoById(photoId);
+
+            // If the photo is on cloudinary (has a PublicId for cloudinary)
+            if (photo.PublicId != null)
+            {
+                // Delete the photo from cloudinary
+                var result = await _photoService.DeletePhotoAsync(photo.PublicId);
+
+                // wait until the result comes back OK from the DeletePhotoAsync. Then, delete the photo from the photo repo
+                if (result.Result == "ok")
+                {
+                    _unitOfWork.PhotoRepository.RemovePhoto(photo);
+                }
+            }
+            else
+            {
+                // if the photo is not on cloudinary, skip to just deleting it from the repo.
+                _unitOfWork.PhotoRepository.RemovePhoto(photo);
+            }
+
+            // save changes to the db after removing the photo.
+            await _unitOfWork.Complete();
+
+            return Ok();
         }
     }
 }

@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgxGalleryAnimation, NgxGalleryImage, NgxGalleryOptions } from '@kolkov/ngx-gallery';
 import { TabDirective, TabsetComponent } from 'ngx-bootstrap/tabs';
+import { ToastrService } from 'ngx-toastr';
 import { take } from 'rxjs/operators';
 import { Member } from 'src/app/_models/member';
 import { Message } from 'src/app/_models/message';
@@ -30,7 +31,9 @@ export class MemberDetailComponent implements OnInit, OnDestroy {
   constructor(public presence: PresenceService, private route: ActivatedRoute,
               private messageService: MessageService,
               private accountService: AccountService,
-              private router: Router) {
+              private router: Router,
+              private memberService: MembersService,
+              private toastr: ToastrService) {
     this.accountService.currentUser$.pipe(take(1)).subscribe(user => this.user = user);
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
   }
@@ -106,6 +109,13 @@ export class MemberDetailComponent implements OnInit, OnDestroy {
       // stop the hub connection if they are not on that tab
       this.messageService.stopHubConnection();
     }
+  }
+
+  addLike(member: Member) {
+    this.memberService.addLike(member.username).subscribe(() => {
+      this.toastr.success('You have liked ' + member.knownAs);
+    });
+    // don't need to worry about doing anything with therror here because our interceptor is handling that for us.
   }
 
   ngOnDestroy(): void {

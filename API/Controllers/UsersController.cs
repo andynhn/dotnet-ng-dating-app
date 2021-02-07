@@ -66,7 +66,9 @@ namespace API.Controllers
         [HttpGet("{username}", Name = "GetUser")]
         public async Task<ActionResult<MemberDto>> GetUser(string username)
         {
-            return await _unitOfWork.UserRepository.GetMemberAsync(username);
+            var currentUsername = User.GetUsername();
+            // set current user to true if the user being fetched is the current logged in user.
+            return await _unitOfWork.UserRepository.GetMemberAsync(username, isCurrentUser: currentUsername == username);
         }
 
         [HttpPut]
@@ -93,9 +95,10 @@ namespace API.Controllers
             // get user from the ClaimsPrincipal (extension method for this)
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername());
 
-            // get results back from photo service
+            // Add photo to cloudinary via the service. get results back from photo service
             var result = await _photoService.AddPhotoAsync(file);
 
+            // if result.Error is not null, meaning it returned something, then return BadRequest because there was an error.
             if (result.Error != null)
             {
                 // this result is coming from cloudinary.
@@ -108,12 +111,6 @@ namespace API.Controllers
                 PublicId = result.PublicId
             };
 
-            // if first photo uploading, set to main
-            if (user.Photos.Count == 0)
-            {
-                photo.IsMain = true;
-            }
-
             user.Photos.Add(photo);
 
             if (await _unitOfWork.Complete())
@@ -122,6 +119,7 @@ namespace API.Controllers
                 return CreatedAtRoute("GetUser", new { username = user.UserName }, _mapper.Map<PhotoDto>(photo));
             }
 
+            // if we make it here, then something went wrong.
             return BadRequest("Problem adding photo");
         }
 
@@ -152,11 +150,15 @@ namespace API.Controllers
         public async Task<ActionResult> DeletePhoto(int photoId)
         {
             var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername());
+            // var user = await _unitOfWork.UserRepository.GetUserByPhotoId(photoId);
 
-            var photo = user.Photos.FirstOrDefault(x => x.Id == photoId);
+            var photo = await _unitOfWork.PhotoRepository.GetPhotoById(photoId);
+            // var photo = user.Photos.FirstOrDefault(x => x.Id == photoId);
 
             if (photo == null) return NotFound();
             if (photo.IsMain) return BadRequest("You cannot delete your main photo");
+            // there are other checks for this, but just in case..prevent unauthorized
+            if (user.Id != photo.AppUserId) return Unauthorized("That action is unauthorized");
 
             // if the photo is in cloudinary
             if (photo.PublicId != null)

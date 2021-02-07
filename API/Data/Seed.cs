@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using API.Entities;
@@ -39,6 +40,8 @@ namespace API.Data
             // now create the users and also assign them a role as member.
             foreach (var user in users)
             {
+                // set the initial photo to approved for seed users
+                user.Photos.First().IsApproved = true;
                 user.UserName = user.UserName.ToLower();
 
                 // tell entity framework to track this new user (refactored to include userManager from ASPNET identity which takes care of saving it to the db)

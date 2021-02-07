@@ -31,6 +31,7 @@ namespace API.Data
         // properties for Signal R group hub message implementation
         public DbSet<Group> Groups { get; set; }
         public DbSet<Connection> Connections { get; set; }
+        public DbSet<Photo> Photos { get; set; }
 
         // configure Entities for the UserLike feature. Need this or we may get errors when we add a migration.
         protected override void OnModelCreating(ModelBuilder builder)
@@ -83,6 +84,10 @@ namespace API.Data
                 .WithMany(m => m.MessagesSent)
                 .OnDelete(DeleteBehavior.Restrict); // only remove if other party deleted it as well.
             
+            // add a query filter to only return approved photos
+            builder.Entity<Photo>()
+                .HasQueryFilter(p => p.IsApproved);
+
             // fix UTC issue. Make sure all date time is in UTC format.
             builder.ApplyUtcDateTimeConverter();
             

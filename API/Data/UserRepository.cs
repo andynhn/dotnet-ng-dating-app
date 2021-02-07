@@ -22,13 +22,18 @@ namespace API.Data
             _context = context;
         }
 
-        public async Task<MemberDto> GetMemberAsync(string username)
+        public async Task<MemberDto> GetMemberAsync(string username, bool? isCurrentUser)
         {
-            // we don't need the .Include when we do this with Auto Mapper. Can be more efficient.
-            return await _context.Users
+            var query = _context.Users
                 .Where(x => x.UserName == username)
                 .ProjectTo<MemberDto>(_mapper.ConfigurationProvider)
-                .SingleOrDefaultAsync();
+                .AsQueryable();
+            
+            // ignore the photo query filter for the current user. 
+            if (isCurrentUser == true) query = query.IgnoreQueryFilters();
+
+            // we don't need the .Include when we do this with Auto Mapper. Can be more efficient.
+            return await query.FirstOrDefaultAsync();
         }
 
         /*
@@ -92,6 +97,15 @@ namespace API.Data
         public async void Update(AppUser user)
         {
             _context.Entry(user).State = EntityState.Modified;
+        }
+
+        public async Task<AppUser> GetUserByPhotoId(int photoId)
+        {
+            return await _context.Users
+                .Include(p => p.Photos)
+                .IgnoreQueryFilters()
+                .Where(p => p.Photos.Any(p => p.Id == photoId))
+                .FirstOrDefaultAsync();
         }
     }
 }
