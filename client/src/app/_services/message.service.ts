@@ -7,6 +7,7 @@ import { environment } from 'src/environments/environment';
 import { Group } from '../_models/group';
 import { Message } from '../_models/message';
 import { User } from '../_models/user';
+import { LoadingService } from './loading.service';
 import { getPaginatedResult, getPaginationHeaders } from './paginationHelper';
 
 
@@ -20,9 +21,10 @@ export class MessageService {
   private messageThreadSource = new BehaviorSubject<Message[]>([]);
   messageThread$ = this.messageThreadSource.asObservable();
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private loadingService: LoadingService) { }
 
   createHubConnection(user: User, otherUsername: string) {
+    this.loadingService.setToLoading();
     this.hubConnection = new HubConnectionBuilder()
       .withUrl(this.hubUrl + 'message?user=' + otherUsername, {
         accessTokenFactory: () => user.token
@@ -30,7 +32,10 @@ export class MessageService {
       .withAutomaticReconnect()
       .build();
 
-    this.hubConnection.start().catch(error => console.log(error));
+    // promise is returned from .start(), so we can use the loading service here.
+    this.hubConnection.start()
+      .catch(error => console.log(error))
+      .finally(() => this.loadingService.setToIdle());
 
     // this name is exactly what we called it in the MesssageHub.cs class
     this.hubConnection.on('ReceiveMessageThread', messages => {
@@ -61,6 +66,7 @@ export class MessageService {
   stopHubConnection() {
     // stop the hub connection if it exists.
     if (this.hubConnection) {
+      this.messageThreadSource.next([]);  // when we stop the hub connection (they navigate from messages tab), clear this.
       this.hubConnection.stop();
     }
   }

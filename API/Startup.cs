@@ -77,6 +77,9 @@ namespace API
 
             app.UseAuthorization();
 
+            app.UseDefaultFiles(); // if there is an index.html inside there, it will use that (our angular app uses it);
+            app.UseStaticFiles(); // need this as well to serve the angular static files.
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
@@ -84,6 +87,9 @@ namespace API
                 endpoints.MapHub<PresenceHub>("hubs/presence");
                 // for our message hub
                 endpoints.MapHub<MessageHub>("hubs/message");
+                // configure endpoint to hit our fallback controller, to help serve Angular app from index.html in wwwroot folder in production
+                // Index is the name of the action (only 1 method in the fallback controller), then the name of the controller.
+                endpoints.MapFallbackToController("Index", "Fallback");
             });
         }
     }

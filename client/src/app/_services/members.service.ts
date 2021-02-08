@@ -49,7 +49,7 @@ export class MembersService {
   }
 
   getMembers(userParams: UserParams) {
-    console.log(Object.values(userParams).join('-'));
+    // console.log(Object.values(userParams).join('-'));
     /**
      * we've created a "key" that stores the userParams so that we can keep track of user activity for caching
      * the key is just the params separated by a hyphen the idea is to prevent the "loading spinner"
@@ -94,7 +94,6 @@ export class MembersService {
     const member = [...this.memberCache.values()]
       .reduce((arr, elem) => arr.concat(elem.result), [])
       .find((member: Member) => member.username === username);
-    console.log(member);
 
     // if we find the member in our cache, bypass the loading spinner in the loading interceptor.
     if (member) {
@@ -139,7 +138,7 @@ export class MembersService {
     let params = getPaginationHeaders(pageNumber, pageSize);
     params = params.append('predicate', predicate);
 
-    console.log(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
+    // console.log(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
 
     var response = this.memberCache.get(params.get('pageNumber') + '-' + params.get('pageSize') + '-' + params.get('predicate'));
 

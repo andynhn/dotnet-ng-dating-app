@@ -54,7 +54,7 @@ export class AccountService {
           this.presence.createHubConnection(user);
         }
       })
-    )
+    );
   }
 
   /**
